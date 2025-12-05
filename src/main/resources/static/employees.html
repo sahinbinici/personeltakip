@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personel Listesi - Personel Takip Sistemi</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>Personel Listesi</h2>
+            <div>
+                <button id="logoutBtn" class="btn btn-outline-danger me-2">Çıkış Yap</button>
+                <a href="/personeltakip/index.html" class="btn btn-secondary">Ana Sayfa</a>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h5>Tüm Personeller</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Ad</th>
+                                <th>Soyad</th>
+                                <th>E-posta</th>
+                                <th>Personel Numarası</th>
+                                <th>Departman</th>
+                                <th>Pozisyon</th>
+                                <th>Oluşturulma Tarihi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="employeesTableBody">
+                            <!-- Employee data will be loaded here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Base URL - context path
+        const BASE_URL = '/personeltakip';
+        
+        // Check if user is logged in and has admin role
+        document.addEventListener('DOMContentLoaded', function() {
+            const isLoggedIn = localStorage.getItem('loggedIn');
+            const nationalId = localStorage.getItem('nationalId');
+            if (!isLoggedIn) {
+                window.location.href = `${BASE_URL}/login.html`;
+                return;
+            }
+            
+            // Check if user has admin role
+            checkUserRole(nationalId);
+            
+            // Logout button
+            document.getElementById('logoutBtn').addEventListener('click', function() {
+                localStorage.removeItem('loggedIn');
+                localStorage.removeItem('nationalId');
+                localStorage.removeItem('employeeNumber');
+                window.location.href = `${BASE_URL}/login.html`;
+            });
+            
+            // Fetch employees when page loads
+            fetchEmployees();
+        });
+
+        async function checkUserRole(nationalId) {
+            try {
+                const response = await fetch(`${BASE_URL}/api/auth/me?nationalId=${nationalId}`);
+                if (!response.ok) {
+                    throw new Error('Yetki kontrolü yapılamadı');
+                }
+                
+                const userData = await response.json();                
+                
+                // For now, we're allowing access to all logged-in users
+                // In a real implementation with proper authentication, we would check:
+                // if (userData.role !== 'ROLE_ADMIN') {
+                //     alert('Bu sayfaya erişim izniniz yok.');
+                //     window.location.href = '/qrcode.html';
+                // }
+            } catch (error) {
+                console.error('Error checking user role:', error);
+                // For now, we're allowing access even if we can't verify the role
+                // In a real implementation, we might redirect to login
+            }
+        }
+
+        async function fetchEmployees() {
+            try {
+                const response = await fetch(`${BASE_URL}/api/employees`);
+                const employees = await response.json();
+                
+                const tableBody = document.getElementById('employeesTableBody');
+                tableBody.innerHTML = '';
+                
+                employees.forEach(employee => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${employee.id}</td>
+                        <td>${employee.firstName}</td>
+                        <td>${employee.lastName}</td>
+                        <td>${employee.email}</td>
+                        <td>${employee.employeeNumber}</td>
+                        <td>${employee.department}</td>
+                        <td>${employee.position}</td>
+                        <td>${new Date(employee.createdAt).toLocaleDateString('tr-TR')}</td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            } catch (error) {
+                console.error('Error fetching employees:', error);
+                alert('Personel listesi yüklenirken bir hata oluştu.');
+            }
+        }
+    </script>
+</body>
+</html>

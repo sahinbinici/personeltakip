@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Kod - Personel Takip Sistemi</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .qr-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 400px;
+        }
+        .qr-image {
+            max-width: 300px;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>QR Kod Oluştur</h2>
+            <div>
+                <div id="adminLinks" style="display: none;">
+                    <a href="/personeltakip/employees.html" class="btn btn-secondary me-2">Personeller</a>
+                    <a href="/personeltakip/attendance.html" class="btn btn-secondary me-2">Katılım Kayıtları</a>
+                </div>
+                <button id="logoutBtn" class="btn btn-outline-danger">Çıkış Yap</button>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Admin Form Section -->
+            <div class="col-md-6" id="adminFormSection" style="display: none;">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>QR Kod Oluştur</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="qrForm">
+                            <div class="mb-3">
+                                <label for="employeeNumber" class="form-label">Personel Numarası</label>
+                                <input type="text" class="form-control" id="employeeNumber" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary">QR Kod Oluştur</button>
+                        </form>
+                        <div id="adminInfoMessage" class="alert alert-info mt-3" style="display: none;">
+                            <strong>Bilgi:</strong> Günde bir kişi için sadece 1 QR kod üretilir. Aynı kod hem giriş hem çıkış için kullanılabilir.
+                        </div>
+                        <div id="authWarning" class="alert alert-warning mt-3" style="display: none;">
+                            <strong>Uyarı:</strong> Oturumunuz açılmamış veya süresi dolmuş olabilir. Lütfen tekrar giriş yapın.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- QR Code Display Section -->
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Oluşturulan QR Kod</h5>
+                    </div>
+                    <div class="card-body text-center">
+                        <div id="qrResult">
+                            <p class="text-muted">QR kod oluşturulacak...</p>
+                        </div>
+                        <div id="qrImageContainer" class="mt-3" style="display: none;">
+                            <img id="qrImage" src="" alt="QR Kod" class="qr-image">
+                            <p class="mt-3"><small>Personel numarası: <span id="qrEmployeeNumber"></span></small></p>
+                            <p class="mt-2"><small>Oluşturulma tarihi: <span id="qrCreatedDate"></span></small></p>
+                            <p class="mt-2"><small class="text-success"><strong>Bu QR kodu mobil uygulamada okutarak giriş ve çıkış yapabilirsiniz.</strong></small></p>
+                            <div id="tokenStatusInfo" class="alert alert-info mt-3" style="display: none;">
+                                <small id="tokenStatus"></small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- User Info Section -->
+        <div class="row mt-4">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Kullanıcı Bilgileri</h5>
+                    </div>
+                    <div class="card-body">
+                        <p><strong>Ad Soyad:</strong> <span id="userFullName">-</span></p>
+                        <p><strong>Personel Numarası:</strong> <span id="userEmployeeNumber">-</span></p>
+                        <p><strong>Rol:</strong> <span id="userRole">-</span></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Base URL - context path
+        const BASE_URL = '/personeltakip';
+        
+        // Global variables
+        let currentUser = null;
+        let currentQRToken = null;
+
+        // DOM Ready
+        document.addEventListener('DOMContentLoaded', function() {
+            setupEventListeners();
+            checkAuthStatus();
+        });
+
+        function setupEventListeners() {
+            // Logout button
+            document.getElementById('logoutBtn').addEventListener('click', function() {
+                fetch(`${BASE_URL}/api/auth/logout`, {
+                    method: 'POST',
+                    credentials: 'include'
+                })
+                .then(() => {
+                    window.location.href = `${BASE_URL}/login.html`;
+                })
+                .catch(error => {
+                    console.error('Logout error:', error);
+                    window.location.href = `${BASE_URL}/login.html`;
+                });
+            });
+            
+            // QR Kod oluşturma formu (admin için)
+            document.getElementById('qrForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                const employeeNumber = document.getElementById('employeeNumber').value;
+                generateQRCode(employeeNumber);
+            });
+        }
+
+        function checkAuthStatus() {
+            // Check user role by making a request to the /me endpoint
+            fetch(`${BASE_URL}/api/auth/me`, {
+                method: 'GET',
+                credentials: 'include'
+            })
+            .then(response => {
+                if (!response.ok) {
+                    window.location.href = `${BASE_URL}/login.html`;
+                    return;
+                }
+                return response.json();
+            })
+            .then(userData => {
+                if (!userData) return;
+                
+                currentUser = userData;
+                
+                // Display user info
+                document.getElementById('userFullName').textContent = userData.username || '-';
+                document.getElementById('userEmployeeNumber').textContent = userData.employeeNumber || '-';
+                
+                // Fix the role display - check the actual role value
+                const userRole = userData.role;
+                document.getElementById('userRole').textContent = userRole === 'ROLE_ADMIN' ? 'Admin' : 'Kullanıcı';
+                
+                // Check if user is admin - ensure proper comparison
+                if (userRole && userRole === 'ROLE_ADMIN') {
+                    // Admin: show form and admin links
+                    document.getElementById('adminFormSection').style.display = 'block';
+                    document.getElementById('adminLinks').style.display = 'inline-block';
+                } else {
+                    // Normal user: hide form and admin links, auto-generate QR
+                    document.getElementById('adminFormSection').style.display = 'none';
+                    document.getElementById('adminLinks').style.display = 'none';
+                    
+                    // Auto-generate QR for normal user
+                    if (userData.employeeNumber) {
+                        generateQRCode(userData.employeeNumber.toString());
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Authentication check failed:', error);
+                // Redirect to login on auth failure
+                window.location.href = `${BASE_URL}/login.html`;
+            });
+        }
+
+        async function generateQRCode(employeeNumber) {
+            try {
+                document.getElementById('authWarning').style.display = 'none';
+                
+                const response = await fetch(`${BASE_URL}/api/qrcode/generate/${employeeNumber}`, {
+                    credentials: 'include'
+                });
+                
+                if (response.status === 401 || response.status === 403) {
+                    document.getElementById('authWarning').style.display = 'block';
+                    document.getElementById('qrResult').innerHTML = `<p class="text-danger">Yetkilendirme hatası. Lütfen tekrar giriş yapın.</p>`;
+                    document.getElementById('qrImageContainer').style.display = 'none';
+                    return;
+                }
+                
+                if (!response.ok) {
+                    throw new Error('QR kod oluşturulurken hata oluştu: ' + response.status);
+                }
+                
+                const token = await response.text();
+                currentQRToken = token;
+                
+                // Get QR code image
+                const qrResponse = await fetch(`${BASE_URL}/api/qrcode/image/${token}`, {
+                    credentials: 'include'
+                });
+                
+                if (qrResponse.status === 401 || qrResponse.status === 403) {
+                    document.getElementById('authWarning').style.display = 'block';
+                    document.getElementById('qrResult').innerHTML = `<p class="text-danger">Yetkilendirme hatası. Lütfen tekrar giriş yapın.</p>`;
+                    document.getElementById('qrImageContainer').style.display = 'none';
+                    return;
+                }
+                
+                if (!qrResponse.ok) {
+                    throw new Error('QR kod görüntüsü alınamadı: ' + qrResponse.status);
+                }
+                
+                const qrImageData = await qrResponse.blob();
+                const qrImageUrl = URL.createObjectURL(qrImageData);
+                
+                // Display results
+                document.getElementById('qrImage').src = qrImageUrl;
+                document.getElementById('qrEmployeeNumber').textContent = employeeNumber;
+                document.getElementById('qrCreatedDate').textContent = new Date().toLocaleString('tr-TR');
+                document.getElementById('qrImageContainer').style.display = 'block';
+                document.getElementById('qrResult').innerHTML = `<p class="text-success">QR kod başarıyla oluşturuldu!</p>`;
+                
+                // Show info message
+                if (currentUser && currentUser.role === 'ROLE_ADMIN') {
+                    document.getElementById('adminInfoMessage').style.display = 'block';
+                }
+                
+                // Show token status
+                updateTokenStatus(token);
+            } catch (error) {
+                console.error('Error generating QR code:', error);
+                document.getElementById('qrResult').innerHTML = `<p class="text-danger">Hata: ${error.message}</p>`;
+                document.getElementById('qrImageContainer').style.display = 'none';
+            }
+        }
+
+        function updateTokenStatus(token) {
+            // Validate token to get its status
+            fetch(`${BASE_URL}/api/qrcode/validate/${token}`, {
+                credentials: 'include'
+            })
+            .then(response => response.json())
+            .then(isValid => {
+                const statusDiv = document.getElementById('tokenStatusInfo');
+                const statusText = document.getElementById('tokenStatus');
+                
+                if (isValid) {
+                    statusDiv.style.display = 'block';
+                    statusDiv.className = 'alert alert-success mt-3';
+                    statusText.textContent = '✓ QR kod geçerli ve kullanıma hazır';
+                } else {
+                    statusDiv.style.display = 'block';
+                    statusDiv.className = 'alert alert-warning mt-3';
+                    statusText.textContent = '⚠ QR kod süresi dolmuş veya kullanılmış';
+                }
+            })
+            .catch(error => {
+                console.error('Error validating token:', error);
+            });
+        }
+    </script>
+</body>
+</html>

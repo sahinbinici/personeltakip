@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personel Takip Sistemi</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --primary-dark: #1e40af;
+            --secondary-color: #10b981;
+            --accent-color: #f59e0b;
+            --text-dark: #1f2937;
+            --text-light: #6b7280;
+            --bg-light: #f9fafb;
+            --shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 20px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: var(--text-dark);
+            background: var(--bg-light);
+            min-height: 100vh;
+        }
+
+        /* Dashboard Styles */
+        .dashboard-container {
+            display: none;
+        }
+
+        .dashboard-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px 0;
+            box-shadow: var(--shadow);
+        }
+
+        .dashboard-header h1 {
+            margin: 0;
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        .dashboard-content {
+            padding: 40px 0;
+        }
+
+        .dashboard-card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            border: 1px solid #e5e7eb;
+            height: 100%;
+        }
+
+        .dashboard-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .dashboard-card-icon {
+            width: 70px;
+            height: 70px;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            margin-bottom: 20px;
+            color: white;
+        }
+
+        .icon-qr {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .icon-users {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        }
+
+        .icon-attendance {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        }
+
+        .dashboard-card-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: var(--text-dark);
+        }
+
+        .dashboard-card-description {
+            color: var(--text-light);
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+
+        .btn-dashboard {
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            border: none;
+        }
+
+        .btn-dashboard:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .user-info-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .user-info-item {
+            padding: 10px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .user-info-item:last-child {
+            border-bottom: none;
+        }
+
+        .user-info-label {
+            font-weight: 600;
+            color: var(--text-light);
+            margin-right: 10px;
+        }
+
+    </style>
+</head>
+<body>
+    <!-- Dashboard (for logged in users) -->
+    <div id="dashboard" class="dashboard-container">
+        <div class="dashboard-header">
+            <div class="container">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h1><i class="fas fa-tachometer-alt me-2"></i>Dashboard</h1>
+                    <div>
+                        <span class="me-3" id="userWelcome">Hoş geldiniz!</span>
+                        <button id="logoutBtn" class="btn btn-light">
+                            <i class="fas fa-sign-out-alt me-2"></i>Çıkış Yap
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="container dashboard-content">
+            <!-- User Info Card -->
+            <div class="user-info-card">
+                <h3 class="mb-3"><i class="fas fa-user-circle me-2"></i>Kullanıcı Bilgileri</h3>
+                <div class="user-info-item">
+                    <span class="user-info-label">Ad:</span>
+                    <span id="userFirstName">-</span>
+                </div>
+                <div class="user-info-item">
+                    <span class="user-info-label">Soyad:</span>
+                    <span id="userLastName">-</span>
+                </div>
+                <div class="user-info-item">
+                    <span class="user-info-label">Ad Soyad:</span>
+                    <span id="userFullName">-</span>
+                </div>
+                <div class="user-info-item">
+                    <span class="user-info-label">TC Kimlik No:</span>
+                    <span id="userNationalId">-</span>
+                </div>
+                <div class="user-info-item">
+                    <span class="user-info-label">Personel Numarası:</span>
+                    <span id="userEmployeeNumber">-</span>
+                </div>
+                <div class="user-info-item">
+                    <span class="user-info-label">Rol:</span>
+                    <span id="userRole">-</span>
+                </div>
+            </div>
+
+            <!-- Dashboard Cards -->
+            <div class="row">
+                <!-- QR Code Card -->
+                <div class="col-md-6 col-lg-4">
+                    <div class="dashboard-card">
+                        <div class="dashboard-card-icon icon-qr">
+                            <i class="fas fa-qrcode"></i>
+                        </div>
+                        <h3 class="dashboard-card-title">QR Kod Oluştur</h3>
+                        <p class="dashboard-card-description">
+                            Giriş ve çıkış işlemleri için QR kodunuzu oluşturun ve kullanın.
+                        </p>
+                        <a href="/personeltakip/qrcode.html" class="btn btn-dashboard btn-primary">
+                            <i class="fas fa-qrcode me-2"></i>QR Kod Sayfasına Git
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Employees Card (Admin Only) -->
+                <div class="col-md-6 col-lg-4" id="adminEmployeesCard" style="display: none;">
+                    <div class="dashboard-card">
+                        <div class="dashboard-card-icon icon-users">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <h3 class="dashboard-card-title">Personel Listesi</h3>
+                        <p class="dashboard-card-description">
+                            Sistemde kayıtlı tüm personelleri görüntüleyin ve yönetin.
+                        </p>
+                        <a href="/personeltakip/employees.html" class="btn btn-dashboard btn-success">
+                            <i class="fas fa-users me-2"></i>Personel Listesine Git
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Attendance Card (Admin Only) -->
+                <div class="col-md-6 col-lg-4" id="adminAttendanceCard" style="display: none;">
+                    <div class="dashboard-card">
+                        <div class="dashboard-card-icon icon-attendance">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <h3 class="dashboard-card-title">Katılım Kayıtları</h3>
+                        <p class="dashboard-card-description">
+                            Personellerin giriş-çıkış kayıtlarını görüntüleyin ve raporlayın.
+                        </p>
+                        <a href="/personeltakip/attendance.html" class="btn btn-dashboard btn-warning">
+                            <i class="fas fa-clock me-2"></i>Katılım Kayıtlarına Git
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const BASE_URL = '/personeltakip';
+        let currentUser = null;
+
+        // Check authentication status on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            checkAuthStatus();
+            
+            // Logout button
+            document.getElementById('logoutBtn').addEventListener('click', function() {
+                fetch(`${BASE_URL}/api/auth/logout`, {
+                    method: 'POST',
+                    credentials: 'include'
+                })
+                .then(() => {
+                    window.location.reload();
+                })
+                .catch(error => {
+                    console.error('Logout error:', error);
+                    window.location.reload();
+                });
+            });
+        });
+
+        function checkAuthStatus() {
+            fetch(`${BASE_URL}/api/auth/me`, {
+                method: 'GET',
+                credentials: 'include'
+            })
+            .then(response => {
+                if (!response.ok) {
+                    // Not logged in, redirect to login page
+                    window.location.href = `${BASE_URL}/login.html`;
+                    return;
+                }
+                return response.json();
+            })
+            .then(userData => {
+                if (userData) {
+                    // Logged in, show dashboard
+                    currentUser = userData;
+                    showDashboard(userData);
+                } else {
+                    // Not logged in, redirect to login page
+                    window.location.href = `${BASE_URL}/login.html`;
+                }
+            })
+            .catch(error => {
+                console.error('Auth check failed:', error);
+                // Not logged in, redirect to login page
+                window.location.href = `${BASE_URL}/login.html`;
+            });
+        }
+
+        function showDashboard(userData) {
+            document.getElementById('dashboard').style.display = 'block';
+
+            // Update user info - use fullName from DB if available, otherwise use username
+            const displayName = userData.fullName && userData.fullName.trim() !== '' 
+                ? userData.fullName.trim() 
+                : (userData.firstName && userData.lastName 
+                    ? `${userData.firstName} ${userData.lastName}`.trim()
+                    : userData.username || 'Kullanıcı');
+            
+            document.getElementById('userWelcome').textContent = `Hoş geldiniz, ${displayName}!`;
+            document.getElementById('userFirstName').textContent = userData.firstName || '-';
+            document.getElementById('userLastName').textContent = userData.lastName || '-';
+            document.getElementById('userFullName').textContent = displayName;
+            document.getElementById('userNationalId').textContent = userData.nationalId || '-';
+            document.getElementById('userEmployeeNumber').textContent = userData.employeeNumber || '-';
+            document.getElementById('userRole').textContent = userData.role === 'ROLE_ADMIN' ? 'Admin' : 'Kullanıcı';
+
+            // Show admin cards if user is admin
+            if (userData.role === 'ROLE_ADMIN') {
+                document.getElementById('adminEmployeesCard').style.display = 'block';
+                document.getElementById('adminAttendanceCard').style.display = 'block';
+            }
+        }
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personel Takip Sistemi</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header text-center">
+                        <h3 class="mb-3">Personel Takip Sistemi</h3>
+                        <div class="btn-group w-100" role="group" aria-label="Form seçimleri">
+                            <button id="toggleLogin" type="button" class="btn btn-primary">Giriş Yap</button>
+                            <button id="toggleRegister" type="button" class="btn btn-outline-primary">Kayıt Ol</button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <!-- Registration Form -->
+                        <div id="registrationSection" style="display: none;">
+                            <h5 class="mb-3">Kayıt Ol</h5>
+                            <form id="registrationForm">
+                                <div class="mb-3">
+                                    <label for="regNationalId" class="form-label">TC Kimlik No</label>
+                                    <input type="text" class="form-control" id="regNationalId" required maxlength="11">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="regEmployeeNumber" class="form-label">Sicil Numarası</label>
+                                    <input type="text" class="form-control" id="regEmployeeNumber" required>
+                                </div>
+                                <button type="submit" class="btn btn-primary w-100">Kayıt Ol ve SMS Gönder</button>
+                            </form>
+                        </div>
+
+                        <!-- SMS Verification Form -->
+                        <div id="smsVerificationSection" style="display: none;">
+                            <h5 class="mb-3">SMS Doğrulama</h5>
+                            <p class="text-info">Sicil numaranıza bir SMS gönderildi. Lütfen gelen kodu girin.</p>
+                            <form id="smsVerificationForm">
+                                <div class="mb-3">
+                                    <label for="smsCode" class="form-label">SMS Kodu</label>
+                                    <input type="text" class="form-control" id="smsCode" required maxlength="6">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="password" class="form-label">Şifre</label>
+                                    <input type="password" class="form-control" id="password" required>
+                                </div>
+                                <button type="submit" class="btn btn-success w-100">Hesap Oluştur</button>
+                            </form>
+                            <button id="backToRegistration" class="btn btn-link w-100">Geri Dön</button>
+                        </div>
+
+                        <!-- Login Form -->
+                        <div id="loginSection" style="display: block;">
+                            <h5 class="mb-3">Giriş Yap</h5>
+                            <form id="loginForm">
+                                <div class="mb-3">
+                                    <label for="nationalId" class="form-label">TC Kimlik No</label>
+                                    <input type="text" class="form-control" id="nationalId" required maxlength="11">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="loginPassword" class="form-label">Şifre</label>
+                                    <input type="password" class="form-control" id="loginPassword" required>
+                                </div>
+                                <button type="submit" class="btn btn-primary w-100">Giriş Yap</button>
+                            </form>
+                        </div>
+
+                        <!-- Error/Success Messages -->
+                        <div id="errorMessage" class="alert alert-danger mt-3" style="display: none;"></div>
+                        <div id="successMessage" class="alert alert-success mt-3" style="display: none;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Global variables
+        let currentNationalId = '';
+        let currentEmployeeNumber = '';
+
+        // DOM Ready
+        document.addEventListener('DOMContentLoaded', function() {
+            // Toggle buttons
+            document.getElementById('toggleLogin').addEventListener('click', showLoginForm);
+            document.getElementById('toggleRegister').addEventListener('click', showRegistrationForm);
+
+            // Form submissions
+            document.getElementById('registrationForm').addEventListener('submit', handleRegistration);
+            document.getElementById('smsVerificationForm').addEventListener('submit', handleVerification);
+            document.getElementById('loginForm').addEventListener('submit', handleLogin);
+            
+            // Back button from verification to registration
+            document.getElementById('backToRegistration').addEventListener('click', showRegistrationForm);
+
+            // Start with login visible by default
+            showLoginForm();
+        });
+
+        // Handle registration form submission
+        async function handleRegistration(e) {
+            e.preventDefault();
+            const nationalId = document.getElementById('regNationalId').value;
+            const employeeNumber = document.getElementById('regEmployeeNumber').value;
+
+            hideMessages();
+
+            try {
+                const response = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        nationalId: nationalId,
+                        employeeNumber: employeeNumber
+                    }),
+                    credentials: 'include' // Include cookies/sessions
+                });
+
+                if (response.ok) {
+                    currentNationalId = nationalId;
+                    currentEmployeeNumber = employeeNumber;
+                    showSuccessMessage('SMS kodu gönderildi. Lütfen kodu girin.');
+                    showVerificationForm();
+                } else {
+                    const errorText = await response.text();
+                    throw new Error(errorText);
+                }
+            } catch (error) {
+                showErrorMessage('Kayıt hatası: ' + error.message);
+            }
+        }
+
+        // Handle SMS verification form submission
+        async function handleVerification(e) {
+            e.preventDefault();
+            const smsCode = document.getElementById('smsCode').value;
+            const password = document.getElementById('password').value;
+
+            hideMessages();
+
+            try {
+                const response = await fetch('/api/auth/verify-and-create', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        nationalId: currentNationalId,
+                        employeeNumber: currentEmployeeNumber,
+                        smsCode: smsCode,
+                        password: password
+                    }),
+                    credentials: 'include' // Include cookies/sessions
+                });
+
+                if (response.ok) {
+                    showSuccessMessage('Hesap başarıyla oluşturuldu. Şimdi giriş yapabilirsiniz.');
+                    showLoginForm();
+                } else {
+                    const errorText = await response.text();
+                    throw new Error(errorText);
+                }
+            } catch (error) {
+                showErrorMessage('Doğrulama hatası: ' + error.message);
+            }
+        }
+
+        // Handle login form submission
+        async function handleLogin(e) {
+            e.preventDefault();
+            const nationalId = document.getElementById('nationalId').value;
+            const password = document.getElementById('loginPassword').value;
+
+            hideMessages();
+
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        nationalId: nationalId,
+                        password: password
+                    }),
+                    credentials: 'include' // Include cookies/sessions
+                });
+
+                if (response.ok) {
+                    // Check user role to determine where to redirect
+                    const userResponse = await fetch('/api/auth/me', {
+                        method: 'GET',
+                        credentials: 'include'
+                    });
+                    
+                    if (userResponse.ok) {
+                        const userData = await userResponse.json();
+                        if (userData.role === 'ROLE_ADMIN') {
+                            window.location.href = '/qrcode.html';
+                        } else {
+                            window.location.href = '/qrcode.html';
+                        }
+                    } else {
+                        // Fallback redirect
+                        window.location.href = '/qrcode.html';
+                    }
+                } else {
+                    const errorText = await response.text();
+                    throw new Error(errorText);
+                }
+            } catch (error) {
+                showErrorMessage('Giriş hatası: ' + error.message);
+            }
+        }
+
+        // UI Helper Functions
+        function setToggleActive(isLogin) {
+            const loginBtn = document.getElementById('toggleLogin');
+            const registerBtn = document.getElementById('toggleRegister');
+            if (isLogin) {
+                loginBtn.classList.remove('btn-outline-primary');
+                loginBtn.classList.add('btn-primary');
+                registerBtn.classList.remove('btn-primary');
+                registerBtn.classList.add('btn-outline-primary');
+            } else {
+                registerBtn.classList.remove('btn-outline-primary');
+                registerBtn.classList.add('btn-primary');
+                loginBtn.classList.remove('btn-primary');
+                loginBtn.classList.add('btn-outline-primary');
+            }
+        }
+
+        function showRegistrationForm() {
+            document.getElementById('registrationSection').style.display = 'block';
+            document.getElementById('smsVerificationSection').style.display = 'none';
+            document.getElementById('loginSection').style.display = 'none';
+            setToggleActive(false);
+        }
+
+        function showVerificationForm() {
+            document.getElementById('registrationSection').style.display = 'none';
+            document.getElementById('smsVerificationSection').style.display = 'block';
+            document.getElementById('loginSection').style.display = 'none';
+        }
+
+        function showLoginForm() {
+            document.getElementById('registrationSection').style.display = 'none';
+            document.getElementById('smsVerificationSection').style.display = 'none';
+            document.getElementById('loginSection').style.display = 'block';
+            setToggleActive(true);
+        }
+
+        function showErrorMessage(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            document.getElementById('successMessage').style.display = 'none';
+        }
+
+        function showSuccessMessage(message) {
+            const successDiv = document.getElementById('successMessage');
+            successDiv.textContent = message;
+            successDiv.style.display = 'block';
+            document.getElementById('errorMessage').style.display = 'none';
+        }
+
+        function hideMessages() {
+            document.getElementById('errorMessage').style.display = 'none';
+            document.getElementById('successMessage').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
